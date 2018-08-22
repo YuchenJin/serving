@@ -31,6 +31,7 @@ limitations under the License.
 #include "tensorflow_serving/util/cleanup.h"
 #include "tensorflow_serving/util/hash.h"
 #include "tensorflow_serving/util/optional.h"
+#include "chrono"
 
 namespace tensorflow {
 namespace serving {
@@ -608,9 +609,13 @@ void BatchingSession::ProcessBatch(
       signature.output_tensors.begin(), signature.output_tensors.end());
   std::vector<Tensor> combined_outputs;
   RunMetadata run_metadata;
+  auto t1 = std::chrono::high_resolution_clock::now();
   status = wrapped_->Run(run_options, merged_inputs, output_tensor_names,
                          {} /* target node names */, &combined_outputs,
                          &run_metadata);
+  auto t2 = std::chrono::high_resolution_clock::now();
+  auto time_diff = std::chrono::duration_cast<std::chrono::microseconds>(t2-t1).count();
+  LOG(INFO) << (batch->num_tasks()) << ": " << (time_diff);  // This will log the batch size and the execution time of running this batch.
   for (int i = 0; i < batch->num_tasks(); ++i) {
     *(batch->mutable_task(i)->run_metadata) = run_metadata;
   }
